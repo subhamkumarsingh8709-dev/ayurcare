@@ -2,7 +2,6 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Activity,
-  Bell,
   CalendarCheck,
   ChevronRight,
   CircleHelp,
@@ -10,11 +9,9 @@ import {
   FolderHeart,
   LayoutDashboard,
   Menu,
-  MessageCircle,
   Pill,
   Search,
   Settings,
-  Star,
   UserRound,
   X,
 } from "lucide-react";
@@ -75,28 +72,6 @@ const sections: NavigationSection[] = [
       },
     ],
   },
-
-  {
-    label: "Connect",
-    items: [
-      {
-        to: "/messages",
-        label: "Messages",
-        icon: <MessageCircle size={15} />,
-      },
-      {
-        to: "/notifications",
-        label: "Notifications",
-        icon: <Bell size={15} />,
-      },
-      {
-        to: "/reviews",
-        label: "Reviews & Ratings",
-        icon: <Star size={15} />,
-      },
-    ],
-  },
-
   {
     label: "Account",
     items: [

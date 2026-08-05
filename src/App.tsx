@@ -2,94 +2,14 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
 import Sidebar from "./components/Sidebar";
-
-function FindDoctor() {
-  return (
-    <Page
-      title="Find a Practitioner"
-      description="Find the right practitioner for your wellness journey."
-    />
-  );
-}
-
-function BookConsultation() {
-  return (
-    <Page
-      title="Book a Consultation"
-      description="Schedule your next consultation."
-    />
-  );
-}
-
-function Appointments() {
-  return (
-    <Page
-      title="My Appointments"
-      description="View and manage your appointments."
-    />
-  );
-}
-
-function Prescriptions() {
-  return (
-    <Page
-      title="Prescriptions"
-      description="View your prescriptions and medicines."
-    />
-  );
-}
-
-function HealthRecords() {
-  return (
-    <Page
-      title="Health Records & Prakriti"
-      description="Manage your health records and Prakriti information."
-    />
-  );
-}
-
-function Messages() {
-  return (
-    <Page title="Messages" description="Connect with your practitioners." />
-  );
-}
-
-function Notifications() {
-  return (
-    <Page title="Notifications" description="View your latest notifications." />
-  );
-}
-
-function Reviews() {
-  return (
-    <Page
-      title="Reviews & Ratings"
-      description="Manage your reviews and ratings."
-    />
-  );
-}
-
-function Payments() {
-  return (
-    <Page
-      title="Payments & Billing"
-      description="Manage your payments and billing."
-    />
-  );
-}
-
-function Profile() {
-  return (
-    <Page
-      title="Profile & Settings"
-      description="Manage your profile and application settings."
-    />
-  );
-}
-
-function Help() {
-  return <Page title="Help & Support" description="Get help with AyurCare." />;
-}
+import Prescriptions from "./pages/Prescriptions";
+import FindDoctor from "./pages/FindDoctor";
+import BookConsultation from "./pages/BookConsultation";
+import Appointments from "./pages/Appointments";
+import HealthRecords from "./pages/HealthRecords";
+import Help from "./pages/Help";
+import Payments from "./pages/Payments";
+import Profile from "./pages/Profile";
 
 interface PageProps {
   title: string;
@@ -213,20 +133,6 @@ export default function App() {
             {/* Health Records */}
 
             <Route path="/records" element={<HealthRecords />} />
-
-            {/* Messages */}
-
-            <Route path="/messages" element={<Messages />} />
-
-            {/* Notifications */}
-
-            <Route path="/notifications" element={<Notifications />} />
-
-            {/* Reviews */}
-
-            <Route path="/reviews" element={<Reviews />} />
-
-            {/* Payments */}
 
             <Route path="/payments" element={<Payments />} />
 
