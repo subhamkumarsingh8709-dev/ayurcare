@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   Activity,
   CalendarCheck,
@@ -198,10 +198,6 @@ export default function Sidebar() {
           ${expanded ? "lg:w-[264px]" : "lg:w-[72px]"}
         `}
       >
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
         <div
           className={`
             flex
@@ -216,9 +212,10 @@ export default function Sidebar() {
             ${isExpanded ? "justify-between px-4" : "justify-center px-2"}
           `}
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <div
-              className="
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                className="
                 flex
                 h-11
                 w-11
@@ -230,12 +227,12 @@ export default function Sidebar() {
                 text-[#DCE9D8]
                 shadow-[inset_2px_2px_7px_rgba(255,255,255,0.06)]
               "
-            >
-              <LeafLogo />
-            </div>
+              >
+                <LeafLogo />
+              </div>
 
-            <div
-              className={`
+              <div
+                className={`
                 overflow-hidden
                 whitespace-nowrap
                 transition-all
@@ -243,14 +240,15 @@ export default function Sidebar() {
 
                 ${isExpanded ? "w-[150px] opacity-100" : "w-0 opacity-0"}
               `}
-            >
-              <p className="text-[18px] font-bold tracking-tight">AyurCare</p>
+              >
+                <p className="text-[18px] font-bold tracking-tight">AyurCare</p>
 
-              <p className="mt-0.5 text-[10px] text-[#DCE9D8]/55">
-                Balanced wellness
-              </p>
+                <p className="mt-0.5 text-[10px] text-[#DCE9D8]/55">
+                  Balanced wellness
+                </p>
+              </div>
             </div>
-          </div>
+          </Link>
 
           <button
             type="button"
