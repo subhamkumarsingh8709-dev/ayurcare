@@ -8,7 +8,6 @@ import {
   Clock3,
   Leaf,
   MapPin,
-  MessageCircle,
   Phone,
   ShieldCheck,
   Sparkles,
@@ -81,12 +80,6 @@ const consultationTypes = [
     title: "Audio Consultation",
     description: "A private consultation over a phone call",
     icon: Phone,
-  },
-  {
-    id: "chat",
-    title: "Chat Consultation",
-    description: "Discuss your concerns through secure chat",
-    icon: MessageCircle,
   },
 ];
 

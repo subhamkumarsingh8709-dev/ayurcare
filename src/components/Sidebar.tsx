@@ -35,7 +35,7 @@ const sections: NavigationSection[] = [
     label: "Wellness",
     items: [
       {
-        to: "/",
+        to: "/dashboard",
         label: "Dashboard",
         icon: <LayoutDashboard size={15} />,
       },
@@ -131,11 +131,6 @@ export default function Sidebar() {
       >
         <Menu size={21} />
       </button>
-
-      {/* =====================================================
-          MOBILE OVERLAY
-      ===================================================== */}
-
       <div
         onClick={closeMobile}
         className={`
@@ -212,7 +207,7 @@ export default function Sidebar() {
             ${isExpanded ? "justify-between px-4" : "justify-center px-2"}
           `}
         >
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/dashboard" className="flex items-center gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div
                 className="
