@@ -187,18 +187,7 @@ export default function Profile() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="
-              mt-5
-              rounded-xl
-              bg-[#28543A]
-              px-5
-              py-2.5
-              text-xs
-              font-semibold
-              text-white
-              transition
-              hover:bg-[#214731]
-            "
+            className="mt-5 rounded-xl bg-[#28543A] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#214731]"
           >
             Try Again
           </button>
@@ -257,25 +246,7 @@ export default function Profile() {
                   <button
                     type="button"
                     aria-label="Change profile photo"
-                    className="
-                      absolute
-                      bottom-0
-                      right-0
-                      flex
-                      h-8
-                      w-8
-                      items-center
-                      justify-center
-                      rounded-full
-                      border-2
-                      border-white
-                      bg-[#28543A]
-                      text-white
-                      shadow-md
-                      transition
-                      hover:bg-[#1F4530]
-                      active:scale-95
-                    "
+                    className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-[#28543A] text-white shadow-md transition hover:bg-[#1F4530] active:scale-95"
                   >
                     <Camera size={14} />
                   </button>
@@ -331,27 +302,7 @@ export default function Profile() {
                     setMessage("");
                     setError("");
                   }}
-                  className="
-                    mt-4
-                    flex
-                    w-full
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    border
-                    border-[#28543A]/15
-                    bg-white
-                    px-4
-                    py-2.5
-                    text-xs
-                    font-semibold
-                    text-[#28543A]
-                    transition
-                    hover:bg-[#F3F7F1]
-                    active:scale-[0.99]
-                    sm:mt-5
-                  "
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#28543A]/15 bg-white px-4 py-2.5 text-xs font-semibold text-[#28543A] transition hover:bg-[#F3F7F1] active:scale-[0.99] sm:mt-5 active:scale-[0.99] sm:mt-5"
                 >
                   <Edit3 size={14} />
                   Edit Profile
@@ -364,27 +315,7 @@ export default function Profile() {
                     setMessage("");
                     setError("");
                   }}
-                  className="
-                    mt-4
-                    flex
-                    w-full
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    border
-                    border-[#28543A]/15
-                    bg-white
-                    px-4
-                    py-2.5
-                    text-xs
-                    font-semibold
-                    text-[#6B7C70]
-                    transition
-                    hover:bg-[#F3F7F1]
-                    active:scale-[0.99]
-                    sm:mt-5
-                  "
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#28543A]/15 bg-white px-4 py-2.5 text-xs font-semibold text-[#6B7C70] transition hover:bg-[#F3F7F1] active:scale-[0.99] sm:mt-5"
                 >
                   <X size={14} />
                   Cancel Editing
@@ -518,23 +449,7 @@ export default function Profile() {
                               : current,
                           )
                         }
-                        className="
-                          mt-2
-                          w-full
-                          rounded-xl
-                          border
-                          border-[#DCE5DC]
-                          bg-white
-                          px-3
-                          py-2.5
-                          text-sm
-                          text-[#304D38]
-                          outline-none
-                          transition
-                          focus:border-[#4F7D5A]
-                          focus:ring-2
-                          focus:ring-[#4F7D5A]/10
-                        "
+                        className="mt-2 w-full rounded-xl border border-[#DCE5DC] bg-white px-3 py-2.5 text-sm text-[#304D38] outline-none transition focus:border-[#4F7D5A] focus:ring-2 focus:ring-[#4F7D5A]/10"
                       >
                         <option value="">Select gender</option>
 
@@ -577,25 +492,7 @@ export default function Profile() {
                           setError("");
                         }}
                         disabled={saving}
-                        className="
-                          flex
-                          items-center
-                          justify-center
-                          gap-2
-                          rounded-xl
-                          border
-                          border-[#DCE5DC]
-                          bg-white
-                          px-5
-                          py-2.5
-                          text-xs
-                          font-semibold
-                          text-[#617065]
-                          transition
-                          hover:bg-[#F5F8F4]
-                          disabled:cursor-not-allowed
-                          disabled:opacity-50
-                        "
+                        className="flex items-center justify-center gap-2 rounded-xl border border-[#DCE5DC] bg-white px-5 py-2.5 text-xs font-semibold text-[#617065] transition hover:bg-[#F5F8F4] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <X size={14} />
                         Cancel
@@ -605,23 +502,7 @@ export default function Profile() {
                         type="button"
                         onClick={handleSaveProfile}
                         disabled={saving}
-                        className="
-                          flex
-                          items-center
-                          justify-center
-                          gap-2
-                          rounded-xl
-                          bg-[#28543A]
-                          px-5
-                          py-2.5
-                          text-xs
-                          font-semibold
-                          text-white
-                          transition
-                          hover:bg-[#214731]
-                          disabled:cursor-not-allowed
-                          disabled:opacity-60
-                        "
+                        className="flex items-center justify-center gap-2 rounded-xl bg-[#28543A] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#214731] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <Save size={14} />
 
@@ -632,11 +513,13 @@ export default function Profile() {
                 </>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-                  <InfoField
-                    label="Full Name"
-                    value={profile?.full_name || "Not provided"}
-                    icon={<UserRound size={15} />}
-                  />
+                  <div className="sm:col-span-2">
+                    <InfoField
+                      label="Full Name"
+                      value={profile?.full_name || "Not provided"}
+                      icon={<UserRound size={15} />}
+                    />
+                  </div>
 
                   <InfoField
                     label="Date of Birth"
@@ -746,7 +629,6 @@ export default function Profile() {
                       {profile?.location || "No address provided"}
                     </p>
                   </div>
-
                   {!editing && (
                     <button
                       type="button"
@@ -808,26 +690,7 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="
-                  flex
-                  w-full
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  border
-                  border-red-200
-                  bg-white
-                  px-4
-                  py-2.5
-                  text-xs
-                  font-semibold
-                  text-red-600
-                  transition
-                  hover:bg-red-50
-                  active:scale-[0.99]
-                  sm:w-auto
-                "
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 active:scale-[0.99] sm:w-auto"
               >
                 <LogOut size={15} />
                 Sign Out
@@ -881,18 +744,7 @@ function ProfileSection({
         {action && (
           <button
             type="button"
-            className="
-              hidden
-              shrink-0
-              items-center
-              gap-1
-              text-xs
-              font-semibold
-              text-[#4F7D5A]
-              transition
-              hover:text-[#28543A]
-              sm:flex
-            "
+            className="hidden shrink-0 items-center gap-1 text-xs font-semibold text-[#4F7D5A] transition hover:text-[#28543A] sm:flex"
           >
             {action}
             <ChevronRight size={14} />
@@ -955,23 +807,7 @@ function EditField({ label, value, onChange, type = "text" }: EditFieldProps) {
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="
-          mt-2
-          w-full
-          rounded-xl
-          border
-          border-[#DCE5DC]
-          bg-white
-          px-3
-          py-2.5
-          text-sm
-          text-[#304D38]
-          outline-none
-          transition
-          focus:border-[#4F7D5A]
-          focus:ring-2
-          focus:ring-[#4F7D5A]/10
-        "
+        className="mt-2 w-full rounded-xl border border-[#DCE5DC] bg-white px-3 py-2.5 text-sm text-[#304D38] outline-none transition focus:border-[#4F7D5A] focus:ring-2 focus:ring-[#4F7D5A]/10"
       />
     </div>
   );
@@ -1028,19 +864,7 @@ function SettingsRow({ icon, title, description }: SettingsRowProps) {
   return (
     <button
       type="button"
-      className="
-        group
-        flex
-        w-full
-        min-w-0
-        items-center
-        gap-3
-        py-3.5
-        text-left
-        transition
-        sm:gap-4
-        sm:py-4
-      "
+      className="group flex w-full min-w-0 items-center gap-3 py-3.5 text-left transition sm:gap-4 sm:py-4"
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F0F5EE] text-[#4F7D5A] transition group-hover:bg-[#E5EFE2]">
         {icon}
