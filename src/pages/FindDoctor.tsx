@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   SlidersHorizontal,
@@ -12,121 +12,7 @@ import {
   Award,
   Stethoscope,
 } from "lucide-react";
-
-interface Practitioner {
-  id: number;
-  name: string;
-  specialty: string;
-  experience: string;
-  rating: number;
-  reviews: number;
-  fee: number;
-  location: string;
-  languages: string[];
-  image: string;
-  available: string;
-  online: boolean;
-  verified: boolean;
-}
-
-const practitioners: Practitioner[] = [
-  {
-    id: 1,
-    name: "Dr. Ananya Sharma",
-    specialty: "Ayurvedic Medicine",
-    experience: "12 years",
-    rating: 4.9,
-    reviews: 128,
-    fee: 800,
-    location: "Bengaluru, Karnataka",
-    languages: ["English", "Hindi", "Kannada"],
-    image:
-      "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=700&q=85",
-    available: "Today, 4:30 PM",
-    online: true,
-    verified: true,
-  },
-  {
-    id: 2,
-    name: "Dr. Rahul Mehta",
-    specialty: "Panchakarma Specialist",
-    experience: "15 years",
-    rating: 4.8,
-    reviews: 96,
-    fee: 1000,
-    location: "Mumbai, Maharashtra",
-    languages: ["English", "Hindi", "Marathi"],
-    image:
-      "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=700&q=85",
-    available: "Tomorrow, 10:00 AM",
-    online: true,
-    verified: true,
-  },
-  {
-    id: 3,
-    name: "Dr. Meera Nair",
-    specialty: "Women's Wellness",
-    experience: "10 years",
-    rating: 4.9,
-    reviews: 154,
-    fee: 900,
-    location: "Kochi, Kerala",
-    languages: ["English", "Hindi", "Malayalam"],
-    image:
-      "https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&w=700&q=85",
-    available: "Today, 6:00 PM",
-    online: true,
-    verified: true,
-  },
-  {
-    id: 4,
-    name: "Dr. Arjun Iyer",
-    specialty: "Digestive Health",
-    experience: "9 years",
-    rating: 4.7,
-    reviews: 82,
-    fee: 700,
-    location: "Chennai, Tamil Nadu",
-    languages: ["English", "Tamil"],
-    image:
-      "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=700&q=85",
-    available: "Thu, 11:30 AM",
-    online: false,
-    verified: true,
-  },
-  {
-    id: 5,
-    name: "Dr. Kavya Menon",
-    specialty: "Stress & Mind Wellness",
-    experience: "8 years",
-    rating: 4.8,
-    reviews: 73,
-    fee: 750,
-    location: "Hyderabad, Telangana",
-    languages: ["English", "Hindi", "Telugu"],
-    image:
-      "https://images.unsplash.com/photo-1598550874175-4d0ef436c909?auto=format&fit=crop&w=700&q=85",
-    available: "Today, 7:30 PM",
-    online: true,
-    verified: true,
-  },
-  {
-    id: 6,
-    name: "Dr. Vikram Joshi",
-    specialty: "Skin & Hair Wellness",
-    experience: "14 years",
-    rating: 4.8,
-    reviews: 110,
-    fee: 850,
-    location: "Pune, Maharashtra",
-    languages: ["English", "Hindi", "Marathi"],
-    image:
-      "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=700&q=85",
-    available: "Fri, 2:00 PM",
-    online: true,
-    verified: true,
-  },
-];
+import { supabase } from "../lib/supabase";
 
 const specialties = [
   "All Specialties",
@@ -137,6 +23,23 @@ const specialties = [
   "Stress & Mind Wellness",
   "Skin & Hair Wellness",
 ];
+type Doctor = {
+  number: number;
+  name: string;
+  specialty: string;
+  experience: string;
+  rating: number;
+  reviews: number;
+  fee: number;
+  location: string;
+  languages: string[] | string;
+  image: string;
+  available: string;
+  online: boolean;
+  verified: boolean;
+  phone_number?: string;
+  Uid: string;
+};
 
 export default function FindDoctor() {
   const [search, setSearch] = useState("");
@@ -144,8 +47,35 @@ export default function FindDoctor() {
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [sortBy, setSortBy] = useState("Recommended");
 
-  const filteredPractitioners = useMemo(() => {
-    let result = practitioners.filter((doctor) => {
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      setLoading(true);
+      setError("");
+
+      const { data, error } = await supabase.from("doctors").select("*");
+
+      console.log("Fetched doctors:", data); // Log the fetched data for debugging
+
+      if (error) {
+        console.error("Error fetching doctors:", error);
+        setError("Unable to load doctors. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      setDoctors(data || []);
+      setLoading(false);
+    };
+
+    fetchDoctors();
+  }, []);
+
+  const filteredDoctors = useMemo(() => {
+    let result = doctors.filter((doctor) => {
       const searchValue = search.toLowerCase().trim();
 
       const matchesSearch =
@@ -180,7 +110,57 @@ export default function FindDoctor() {
     }
 
     return result;
-  }, [search, specialty, onlineOnly, sortBy]);
+  }, [doctors, search, specialty, onlineOnly, sortBy]);
+
+  // Loading
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#DCE9D8] border-t-[#4F7D5A]" />
+
+          <p className="mt-4 text-sm text-[#6B7C70]">Finding doctors...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error
+  if (error) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="max-w-sm rounded-2xl border border-red-100 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-500">
+            !
+          </div>
+
+          <h3 className="mt-4 font-semibold text-[#24352A]">
+            Something went wrong
+          </h3>
+
+          <p className="mt-2 text-sm text-[#6B7C70]">{error}</p>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="
+              mt-5
+              rounded-xl
+              bg-[#28543A]
+              px-5
+              py-2.5
+              text-sm
+              font-semibold
+              text-white
+              transition
+              hover:bg-[#1F4530]
+            "
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#F6F8F4] px-4 pb-12 pt-20 sm:px-6 lg:ml-[72px] lg:px-8 lg:pt-8">
@@ -282,7 +262,7 @@ export default function FindDoctor() {
             </h2>
 
             <span className="text-xs text-[#819087]">
-              {practitioners.length}+ practitioners
+              {filteredDoctors.length}+ practitioners
             </span>
           </div>
 
@@ -416,7 +396,7 @@ export default function FindDoctor() {
             </p>
 
             <h2 className="mt-1 text-xl font-bold text-[#26382B]">
-              {filteredPractitioners.length} practitioners found
+              {filteredDoctors.length} practitioners found
             </h2>
           </div>
         </div>
@@ -425,10 +405,10 @@ export default function FindDoctor() {
             PRACTITIONER GRID
         ===================================================== */}
 
-        {filteredPractitioners.length > 0 ? (
+        {filteredDoctors.length > 0 ? (
           <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {filteredPractitioners.map((doctor) => (
-              <PractitionerCard key={doctor.id} doctor={doctor} />
+            {filteredDoctors.map((doctor) => (
+              <PractitionerCard key={doctor.Uid} doctor={doctor} />
             ))}
           </div>
         ) : (
@@ -502,7 +482,7 @@ export default function FindDoctor() {
    PRACTITIONER CARD
 ========================================================= */
 
-function PractitionerCard({ doctor }: { doctor: Practitioner }) {
+function PractitionerCard({ doctor }: { doctor: Doctor }) {
   return (
     <article className="group overflow-hidden rounded-[24px] border border-[#E1E8E1] bg-white shadow-[0_8px_35px_rgba(40,84,58,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(40,84,58,0.11)]">
       {/* Image */}
@@ -617,7 +597,11 @@ function PractitionerCard({ doctor }: { doctor: Practitioner }) {
           <div className="flex items-center gap-2 text-xs text-[#77857B]">
             <Video size={15} className="text-[#6D8D73]" />
 
-            <span>{doctor.languages.join(" • ")}</span>
+            <span>
+              {Array.isArray(doctor.languages)
+                ? doctor.languages.join(" • ")
+                : doctor.languages}
+            </span>
           </div>
         </div>
 

@@ -7,7 +7,6 @@ import {
   Flower2,
   HeartPulse,
   Leaf,
-  MessageCircle,
   Search,
   ShieldCheck,
   Sparkles,
@@ -65,13 +64,6 @@ const features: Feature[] = [
       "Access your prescribed Ayurvedic medicines and recommendations in one place.",
     icon: <Flower2 size={21} />,
     to: "/prescriptions",
-  },
-  {
-    title: "Connect with Practitioners",
-    description:
-      "Stay connected with your practitioners through simple and secure communication.",
-    icon: <MessageCircle size={21} />,
-    to: "/messages",
   },
   {
     title: "Personalized Wellness",
@@ -483,12 +475,6 @@ export default function Dashboard() {
               text: "View your wellness information.",
               icon: <FileIcon />,
               to: "/records",
-            },
-            {
-              title: "Messages",
-              text: "Connect with practitioners.",
-              icon: <MessageCircle size={20} />,
-              to: "/messages",
             },
           ].map((item) => (
             <Link

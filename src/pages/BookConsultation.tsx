@@ -8,7 +8,6 @@ import {
   Clock3,
   Leaf,
   MapPin,
-  MessageCircle,
   Phone,
   ShieldCheck,
   Sparkles,
@@ -82,12 +81,6 @@ const consultationTypes = [
     description: "A private consultation over a phone call",
     icon: Phone,
   },
-  {
-    id: "chat",
-    title: "Chat Consultation",
-    description: "Discuss your concerns through secure chat",
-    icon: MessageCircle,
-  },
 ];
 
 const timeSlots = [
@@ -144,7 +137,7 @@ export default function BookConsultation() {
     return (
       <div className="min-h-screen bg-[#F5F8F3] px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto flex min-h-[80vh] max-w-3xl items-center justify-center">
-          <div className="w-full rounded-[32px] border border-[#DCE9D8] bg-white p-8 text-center shadow-[0_20px_60px_rgba(40,84,58,0.08)] sm:p-12">
+          <div className="w-full rounded-4xl border border-[#DCE9D8] bg-white p-8 text-center shadow-[0_20px_60px_rgba(40,84,58,0.08)] sm:p-12">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#DCE9D8] text-[#28543A]">
               <Check size={38} strokeWidth={2.2} />
             </div>

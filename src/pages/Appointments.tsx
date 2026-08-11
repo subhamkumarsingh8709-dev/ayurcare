@@ -133,21 +133,7 @@ export default function Appointments() {
 
           <NavLink
             to="/book"
-            className="
-              inline-flex
-              h-11
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              bg-[#28543A]
-              px-5
-              text-sm
-              font-semibold
-              text-white
-              shadow-[0_8px_20px_rgba(40,84,58,0.16)]
-              transition
-              hover:bg-[#214831]
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#28543A] px-5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(40,84,58,0.16)] transition hover:bg-[#214831]
             "
           >
             <Plus size={18} />
