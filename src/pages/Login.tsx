@@ -367,13 +367,8 @@ export default function Login() {
 
                     <button
                       type="button"
-                      className="
-                        text-[11px]
-                        font-medium
-                        text-[#4F7D5A]
-                        transition
-                        hover:text-[#28543A]
-                      "
+                      onClick={() => navigate("/forgot-password")}
+                      className="text-[11px] font-medium text-[#4F7D5A] transition hover:text-[#28543A]"
                     >
                       Forgot password?
                     </button>
