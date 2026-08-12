@@ -8,6 +8,7 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const redirectUrl = import.meta.env.VITE_APP_URL || window.location.origin;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -17,7 +18,7 @@ export default function ForgotPassword() {
     setError("");
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${redirectUrl}/reset-password`,
     });
 
     if (error) {
