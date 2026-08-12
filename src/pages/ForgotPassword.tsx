@@ -8,7 +8,7 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const redirectUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+  const redirectUrl = import.meta.env.VITE_APP_URL;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
