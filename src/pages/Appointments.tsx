@@ -2,103 +2,169 @@ import {
   CalendarCheck,
   CalendarDays,
   Clock3,
-  MapPin,
   Video,
   Phone,
-  MoreHorizontal,
   Plus,
   CheckCircle2,
-  XCircle,
-  Clock,
   UserRound,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import {
+  AppointmentRow,
+  InfoRow,
+  MiniCalendar,
+  SummaryCard,
+} from "../components/Appointments/AppointmentsComponents";
+import type {
+  Appointment,
+  AppointmentStatus,
+} from "../components/Appointments/AppointmentsComponents";
 
-type AppointmentStatus = "Upcoming" | "Completed" | "Cancelled";
-
-interface Appointment {
-  id: number;
-  practitioner: string;
-  specialty: string;
-  date: string;
-  day: string;
-  time: string;
-  type: "Video Consultation" | "Clinic Visit" | "Phone Consultation";
-  location?: string;
-  status: AppointmentStatus;
-  image: string;
+interface AppointmentRow {
+  id: string;
+  practitioner_name: string;
+  practitioner_specialty: string;
+  practitioner_image: string;
+  appointment_date: string;
+  appointment_time: string;
+  consultation_type: "video" | "audio";
+  status: "pending_payment" | "confirmed" | "completed" | "cancelled";
 }
 
-const appointments: Appointment[] = [
-  {
-    id: 1,
-    practitioner: "Dr. Ananya Sharma",
-    specialty: "Ayurvedic Physician",
-    date: "Aug 08, 2026",
-    day: "Saturday",
-    time: "10:30 AM",
-    type: "Video Consultation",
-    status: "Upcoming",
-    image:
-      "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: 2,
-    practitioner: "Dr. Rohan Mehta",
-    specialty: "Panchakarma Specialist",
-    date: "Aug 12, 2026",
-    day: "Wednesday",
-    time: "02:00 PM",
-    type: "Clinic Visit",
-    location: "AyurCare Wellness Center",
-    status: "Upcoming",
-    image:
-      "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: 3,
-    practitioner: "Dr. Priya Nair",
-    specialty: "Nutrition & Wellness",
-    date: "Jul 28, 2026",
-    day: "Tuesday",
-    time: "11:00 AM",
-    type: "Phone Consultation",
-    status: "Completed",
-    image:
-      "https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    id: 4,
-    practitioner: "Dr. Vikram Rao",
-    specialty: "Ayurvedic Physician",
-    date: "Jul 18, 2026",
-    day: "Saturday",
-    time: "04:30 PM",
-    type: "Clinic Visit",
-    location: "AyurCare Wellness Center",
-    status: "Completed",
-    image:
-      "https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&w=200&q=80",
-  },
-];
+const formatAppointmentDate = (date: string) => {
+  const parsedDate = new Date(`${date}T12:00:00`);
+  return {
+    date: parsedDate.toLocaleDateString("en-IN", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    }),
+    day: parsedDate.toLocaleDateString("en-IN", { weekday: "long" }),
+  };
+};
+
+const formatAppointmentTime = (time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 const filters: Array<"All" | AppointmentStatus> = [
   "All",
+  "Payment Pending",
   "Upcoming",
   "Completed",
   "Cancelled",
 ];
 
 export default function Appointments() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | AppointmentStatus>(
     "All",
   );
 
-  const [currentMonth, setCurrentMonth] = useState("August 2026");
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    const loadAppointments = async () => {
+      setLoading(true);
+      setError("");
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        if (active) {
+          setError(authError?.message ?? "Sign in to view your appointments.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from("appointments")
+        .select(
+          "id, practitioner_name, practitioner_specialty, practitioner_image, appointment_date, appointment_time, consultation_type, status",
+        )
+        .eq("user_id", user.id)
+        .order("appointment_date", { ascending: true })
+        .order("appointment_time", { ascending: true });
+
+      if (fetchError) {
+        console.error("Error loading appointments:", fetchError);
+        if (active) {
+          setError("Unable to load your appointments. Please try again.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (active) {
+        const rows = (data ?? []) as AppointmentRow[];
+        setAppointments(
+          rows.map((row) => {
+            const formattedDate = formatAppointmentDate(row.appointment_date);
+            return {
+              id: row.id,
+              practitioner: row.practitioner_name,
+              specialty: row.practitioner_specialty,
+              date: formattedDate.date,
+              dateKey: row.appointment_date,
+              day: formattedDate.day,
+              time: formatAppointmentTime(row.appointment_time),
+              type:
+                row.consultation_type === "video"
+                  ? "Video Consultation"
+                  : "Phone Consultation",
+              status:
+                row.status === "pending_payment"
+                  ? "Payment Pending"
+                  : row.status === "confirmed"
+                    ? "Upcoming"
+                    : row.status === "completed"
+                      ? "Completed"
+                      : "Cancelled",
+              image: row.practitioner_image,
+            };
+          }),
+        );
+        setLoading(false);
+      }
+    };
+
+    void loadAppointments();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const upcomingAppointments = useMemo(
+    () => appointments.filter((appointment) => appointment.status === "Upcoming"),
+    [appointments],
+  );
+  const nextAppointment = upcomingAppointments[0];
+  const completedCount = appointments.filter(
+    (appointment) => appointment.status === "Completed",
+  ).length;
+  const practitionerCount = new Set(
+    appointments.map((appointment) => appointment.practitioner),
+  ).size;
 
   const filteredAppointments =
     activeFilter === "All"
@@ -149,28 +215,28 @@ export default function Appointments() {
           <SummaryCard
             icon={<CalendarCheck size={20} />}
             label="Upcoming"
-            value="2"
+            value={String(upcomingAppointments.length)}
             description="Appointments scheduled"
           />
 
           <SummaryCard
             icon={<CheckCircle2 size={20} />}
             label="Completed"
-            value="2"
+            value={String(completedCount)}
             description="Consultations completed"
           />
 
           <SummaryCard
             icon={<Clock3 size={20} />}
             label="Next Appointment"
-            value="Aug 08"
-            description="10:30 AM"
+            value={nextAppointment?.date ?? "None"}
+            description={nextAppointment?.time ?? "No upcoming bookings"}
           />
 
           <SummaryCard
             icon={<UserRound size={20} />}
             label="Practitioners"
-            value="4"
+            value={String(practitionerCount)}
             description="Healthcare providers"
           />
         </section>
@@ -190,14 +256,22 @@ export default function Appointments() {
                 </p>
 
                 <h2 className="mt-1 text-lg font-bold text-[#234A32]">
-                  {currentMonth}
+                  {currentMonth.toLocaleDateString("en-IN", {
+                    month: "long",
+                    year: "numeric",
+                  })}
                 </h2>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setCurrentMonth("July 2026")}
+                  onClick={() =>
+                    setCurrentMonth(
+                      (month) =>
+                        new Date(month.getFullYear(), month.getMonth() - 1, 1),
+                    )
+                  }
                   className="
                     flex
                     h-9
@@ -217,7 +291,12 @@ export default function Appointments() {
 
                 <button
                   type="button"
-                  onClick={() => setCurrentMonth("September 2026")}
+                  onClick={() =>
+                    setCurrentMonth(
+                      (month) =>
+                        new Date(month.getFullYear(), month.getMonth() + 1, 1),
+                    )
+                  }
                   className="
                     flex
                     h-9
@@ -237,7 +316,7 @@ export default function Appointments() {
               </div>
             </div>
 
-            <MiniCalendar />
+            <MiniCalendar month={currentMonth} appointments={appointments} />
 
             <div className="mt-5 flex flex-wrap items-center gap-5 border-t border-[#EDF2EE] pt-5 text-xs text-[#708678]">
               <div className="flex items-center gap-2">
@@ -268,40 +347,57 @@ export default function Appointments() {
               <CalendarDays size={20} className="text-[#C8DEC9]" />
             </div>
 
-            <div className="mt-7 flex items-center gap-4">
-              <img
-                src={appointments[0].image}
-                alt={appointments[0].practitioner}
-                className="h-14 w-14 rounded-2xl object-cover ring-2 ring-white/10"
-              />
+            {nextAppointment ? (
+              <>
+                <div className="mt-7 flex items-center gap-4">
+                  <img
+                    src={nextAppointment.image}
+                    alt={nextAppointment.practitioner}
+                    className="h-14 w-14 rounded-2xl object-cover ring-2 ring-white/10"
+                  />
 
-              <div>
-                <h3 className="font-semibold">
-                  {appointments[0].practitioner}
-                </h3>
+                  <div>
+                    <h3 className="font-semibold">
+                      {nextAppointment.practitioner}
+                    </h3>
 
-                <p className="mt-1 text-xs text-white/60">
-                  {appointments[0].specialty}
-                </p>
-              </div>
-            </div>
+                    <p className="mt-1 text-xs text-white/60">
+                      {nextAppointment.specialty}
+                    </p>
+                  </div>
+                </div>
 
-            <div className="mt-7 space-y-4">
-              <InfoRow
-                icon={<CalendarDays size={17} />}
-                text={appointments[0].date}
-              />
+                <div className="mt-7 space-y-4">
+                  <InfoRow
+                    icon={<CalendarDays size={17} />}
+                    text={nextAppointment.date}
+                  />
 
-              <InfoRow
-                icon={<Clock3 size={17} />}
-                text={appointments[0].time}
-              />
+                  <InfoRow
+                    icon={<Clock3 size={17} />}
+                    text={nextAppointment.time}
+                  />
 
-              <InfoRow icon={<Video size={17} />} text="Video Consultation" />
-            </div>
+                  <InfoRow
+                    icon={
+                      nextAppointment.type === "Video Consultation" ? (
+                        <Video size={17} />
+                      ) : (
+                        <Phone size={17} />
+                      )
+                    }
+                    text={nextAppointment.type}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="mt-7 text-sm text-white/75">
+                You have no upcoming appointments.
+              </p>
+            )}
 
-            <button
-              type="button"
+            <NavLink
+              to="/appointments"
               className="
                 mt-7
                 flex
@@ -321,7 +417,7 @@ export default function Appointments() {
             >
               View Appointment
               <ChevronRight size={16} />
-            </button>
+            </NavLink>
           </div>
         </section>
 
@@ -369,13 +465,28 @@ export default function Appointments() {
             </div>
           </div>
 
-          <div className="divide-y divide-[#EDF2EE]">
-            {filteredAppointments.map((appointment) => (
-              <AppointmentRow key={appointment.id} appointment={appointment} />
-            ))}
-          </div>
-
-          {filteredAppointments.length === 0 && (
+          {loading ? (
+            <p className="px-6 py-12 text-center text-sm text-[#718578]">
+              Loading appointments...
+            </p>
+          ) : error ? (
+            <div className="px-6 py-12 text-center">
+              <p role="alert" className="text-sm text-red-700">{error}</p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="mt-4 rounded-xl bg-[#28543A] px-5 py-2.5 text-xs font-semibold text-white"
+              >
+                Try again
+              </button>
+            </div>
+          ) : filteredAppointments.length > 0 ? (
+            <div className="divide-y divide-[#EDF2EE]">
+              {filteredAppointments.map((appointment) => (
+                <AppointmentRow key={appointment.id} appointment={appointment} />
+              ))}
+            </div>
+          ) : (
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EFF5F0] text-[#6B8A74]">
                 <CalendarCheck size={24} />
@@ -393,328 +504,5 @@ export default function Appointments() {
         </section>
       </div>
     </main>
-  );
-}
-
-/* =========================================================
-   SUMMARY CARD
-========================================================= */
-
-interface SummaryCardProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  description: string;
-}
-
-function SummaryCard({ icon, label, value, description }: SummaryCardProps) {
-  return (
-    <div className="rounded-2xl border border-[#DDE9DF] bg-white p-5 shadow-[0_6px_22px_rgba(40,84,58,0.04)]">
-      <div className="flex items-start justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDF5EE] text-[#28543A]">
-          {icon}
-        </div>
-
-        <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-[#9AA89E]">
-          {label}
-        </span>
-      </div>
-
-      <div className="mt-5">
-        <p className="text-2xl font-bold text-[#234A32]">{value}</p>
-
-        <p className="mt-1 text-xs text-[#819287]">{description}</p>
-      </div>
-    </div>
-  );
-}
-
-/* =========================================================
-   INFO ROW
-========================================================= */
-
-interface InfoRowProps {
-  icon: React.ReactNode;
-  text: string;
-}
-
-function InfoRow({ icon, text }: InfoRowProps) {
-  return (
-    <div className="flex items-center gap-3 text-sm text-white/80">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-[#C8DEC9]">
-        {icon}
-      </span>
-
-      <span>{text}</span>
-    </div>
-  );
-}
-
-/* =========================================================
-   APPOINTMENT ROW
-========================================================= */
-
-function AppointmentRow({ appointment }: { appointment: Appointment }) {
-  const statusConfig = {
-    Upcoming: {
-      icon: <Clock size={13} />,
-      className: "bg-[#EAF4EC] text-[#39704B]",
-    },
-    Completed: {
-      icon: <CheckCircle2 size={13} />,
-      className: "bg-[#EEF2EF] text-[#667A6C]",
-    },
-    Cancelled: {
-      icon: <XCircle size={13} />,
-      className: "bg-[#FBECEC] text-[#A65C5C]",
-    },
-  };
-
-  const status = statusConfig[appointment.status];
-
-  return (
-    <div className="group flex flex-col gap-5 p-5 transition hover:bg-[#FBFDFC] sm:p-6 lg:flex-row lg:items-center">
-      {/* Practitioner */}
-
-      <div className="flex min-w-0 flex-1 items-center gap-4">
-        <img
-          src={appointment.image}
-          alt={appointment.practitioner}
-          className="h-14 w-14 shrink-0 rounded-2xl object-cover"
-        />
-
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-bold text-[#294D36]">
-            {appointment.practitioner}
-          </h3>
-
-          <p className="mt-1 truncate text-xs text-[#829188]">
-            {appointment.specialty}
-          </p>
-
-          <div className="mt-2 flex items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ${status.className}`}
-            >
-              {status.icon}
-              {appointment.status}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Date */}
-
-      <div className="flex min-w-[145px] items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0F5F1] text-[#547362]">
-          <CalendarDays size={17} />
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold text-[#3C5946]">
-            {appointment.date}
-          </p>
-
-          <p className="mt-1 text-[11px] text-[#89978D]">{appointment.day}</p>
-        </div>
-      </div>
-
-      {/* Time */}
-
-      <div className="flex min-w-[120px] items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0F5F1] text-[#547362]">
-          <Clock3 size={17} />
-        </div>
-
-        <span className="text-xs font-semibold text-[#3C5946]">
-          {appointment.time}
-        </span>
-      </div>
-
-      {/* Type */}
-
-      <div className="hidden min-w-[180px] items-center gap-2 xl:flex">
-        {appointment.type === "Video Consultation" ? (
-          <Video size={16} className="text-[#6A8574]" />
-        ) : appointment.type === "Phone Consultation" ? (
-          <Phone size={16} className="text-[#6A8574]" />
-        ) : (
-          <MapPin size={16} className="text-[#6A8574]" />
-        )}
-
-        <span className="text-xs text-[#687C70]">{appointment.type}</span>
-      </div>
-
-      {/* Actions */}
-
-      <div className="flex items-center justify-end gap-2 lg:min-w-[100px]">
-        {appointment.status === "Upcoming" && (
-          <button
-            type="button"
-            className="
-              rounded-lg
-              bg-[#28543A]
-              px-3
-              py-2
-              text-[11px]
-              font-semibold
-              text-white
-              transition
-              hover:bg-[#214831]
-            "
-          >
-            View
-          </button>
-        )}
-
-        {appointment.status === "Completed" && (
-          <button
-            type="button"
-            className="
-              rounded-lg
-              border
-              border-[#DCE8DE]
-              px-3
-              py-2
-              text-[11px]
-              font-semibold
-              text-[#547362]
-              transition
-              hover:bg-[#F1F6F2]
-            "
-          >
-            Details
-          </button>
-        )}
-
-        <button
-          type="button"
-          aria-label="More options"
-          className="
-            flex
-            h-8
-            w-8
-            items-center
-            justify-center
-            rounded-lg
-            text-[#9AA79E]
-            transition
-            hover:bg-[#F1F5F2]
-            hover:text-[#466452]
-          "
-        >
-          <MoreHorizontal size={17} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* =========================================================
-   MINI CALENDAR
-========================================================= */
-
-function MiniCalendar() {
-  const days = [
-    { day: "Mon", date: 27 },
-    { day: "Tue", date: 28 },
-    { day: "Wed", date: 29 },
-    { day: "Thu", date: 30 },
-    { day: "Fri", date: 31 },
-    { day: "Sat", date: 1 },
-    { day: "Sun", date: 2 },
-
-    { day: "Mon", date: 3 },
-    { day: "Tue", date: 4 },
-    { day: "Wed", date: 5 },
-    { day: "Thu", date: 6 },
-    { day: "Fri", date: 7 },
-    { day: "Sat", date: 8, appointment: true },
-    { day: "Sun", date: 9 },
-
-    { day: "Mon", date: 10 },
-    { day: "Tue", date: 11 },
-    { day: "Wed", date: 12, appointment: true },
-    { day: "Thu", date: 13 },
-    { day: "Fri", date: 14 },
-    { day: "Sat", date: 15 },
-    { day: "Sun", date: 16 },
-
-    { day: "Mon", date: 17 },
-    { day: "Tue", date: 18 },
-    { day: "Wed", date: 19 },
-    { day: "Thu", date: 20 },
-    { day: "Fri", date: 21 },
-    { day: "Sat", date: 22 },
-    { day: "Sun", date: 23 },
-
-    { day: "Mon", date: 24 },
-    { day: "Tue", date: 25 },
-    { day: "Wed", date: 26 },
-    { day: "Thu", date: 27 },
-    { day: "Fri", date: 28 },
-    { day: "Sat", date: 29 },
-    { day: "Sun", date: 30 },
-
-    { day: "Mon", date: 31 },
-    { day: "Tue", date: 1 },
-    { day: "Wed", date: 2 },
-    { day: "Thu", date: 3 },
-    { day: "Fri", date: 4 },
-    { day: "Sat", date: 5 },
-    { day: "Sun", date: 6 },
-  ];
-
-  return (
-    <div>
-      <div className="mb-3 grid grid-cols-7">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-          <div
-            key={day}
-            className="py-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9AA89E]"
-          >
-            {day}
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 gap-1.5">
-        {days.map((item, index) => {
-          const isToday = item.date === 5 && index === 9;
-          const isOtherMonth = index < 5 || index >= 35;
-
-          return (
-            <div
-              key={`${item.date}-${index}`}
-              className={`
-                relative
-                flex
-                min-h-[44px]
-                items-center
-                justify-center
-                rounded-xl
-                text-xs
-                transition
-                ${
-                  isToday
-                    ? "bg-[#C8DEC9] font-bold text-[#28543A]"
-                    : item.appointment
-                      ? "bg-[#28543A] font-semibold text-white"
-                      : isOtherMonth
-                        ? "text-[#C3CEC6]"
-                        : "text-[#536B5C] hover:bg-[#F1F6F2]"
-                }
-              `}
-            >
-              {item.date}
-
-              {item.appointment && !isToday && (
-                <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-[#C8DEC9]" />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }

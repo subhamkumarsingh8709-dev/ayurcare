@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { NavLink, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -11,14 +11,18 @@ import {
   Phone,
   ShieldCheck,
   Sparkles,
-  Star,
   Stethoscope,
-  UserRound,
   Video,
 } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import {
+  InputField,
+  StarRating,
+  SummaryRow,
+} from "../components/BookConsultation/BookConsultationComponents";
 
 interface Practitioner {
-  id: number;
+  Uid: string;
   name: string;
   specialty: string;
   experience: string;
@@ -29,44 +33,54 @@ interface Practitioner {
   fee: number;
 }
 
-const practitioners: Practitioner[] = [
-  {
-    id: 1,
-    name: "Dr. Ananya Sharma",
-    specialty: "Ayurvedic Physician",
-    experience: "12 years experience",
-    rating: 4.9,
-    reviews: 128,
-    location: "New Delhi, India",
-    image:
-      "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=500&q=80",
-    fee: 799,
-  },
-  {
-    id: 2,
-    name: "Dr. Rahul Mehta",
-    specialty: "Panchakarma Specialist",
-    experience: "10 years experience",
-    rating: 4.8,
-    reviews: 96,
-    location: "Mumbai, India",
-    image:
-      "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=500&q=80",
-    fee: 699,
-  },
-  {
-    id: 3,
-    name: "Dr. Priya Nair",
-    specialty: "Women's Wellness",
-    experience: "9 years experience",
-    rating: 4.9,
-    reviews: 114,
-    location: "Bengaluru, India",
-    image:
-      "https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&w=500&q=80",
-    fee: 749,
-  },
-];
+interface AppointmentDate {
+  day: string;
+  date: string;
+}
+
+interface RazorpayOrder {
+  already_paid?: boolean;
+  appointment_id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  key_id: string;
+  practitioner_name: string;
+  patient_name: string;
+  patient_phone: string;
+  email: string;
+}
+
+interface RazorpayPaymentResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayCheckoutOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill: { name: string; contact: string; email: string };
+  notes: { appointment_id: string };
+  theme: { color: string };
+  handler: (response: RazorpayPaymentResponse) => void;
+  modal: { ondismiss: () => void };
+}
+
+interface RazorpayCheckout {
+  open: () => void;
+  on: (event: "payment.failed", handler: () => void) => void;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayCheckoutOptions) => RazorpayCheckout;
+  }
+}
 
 const consultationTypes = [
   {
@@ -98,29 +112,161 @@ const timeSlots = [
   "04:30 PM",
 ];
 
-const dates = [
-  { day: "Tue", date: 12, month: "Aug" },
-  { day: "Wed", date: 13, month: "Aug" },
-  { day: "Thu", date: 14, month: "Aug" },
-  { day: "Fri", date: 15, month: "Aug" },
-  { day: "Sat", date: 16, month: "Aug" },
-];
+const getAvailableDates = (): AppointmentDate[] =>
+  Array.from({ length: 14 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index + 1);
+    return {
+      day: date.toLocaleDateString("en-IN", { weekday: "short" }),
+      date: [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0"),
+      ].join("-"),
+    };
+  });
+
+const formatAppointmentDate = (date: string) =>
+  new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+const toStoredTime = (time: string) => {
+  const [clock, period] = time.split(" ");
+  const [hourText, minute] = clock.split(":");
+  let hour = Number(hourText);
+
+  if (period === "PM" && hour !== 12) hour += 12;
+  if (period === "AM" && hour === 12) hour = 0;
+
+  return `${String(hour).padStart(2, "0")}:${minute}`;
+};
+
+const loadRazorpayCheckout = () =>
+  new Promise<void>((resolve, reject) => {
+    if (window.Razorpay) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => {
+      if (window.Razorpay) resolve();
+      else reject(new Error("Razorpay checkout did not initialize."));
+    };
+    script.onerror = () => reject(new Error("Could not load Razorpay checkout."));
+    document.body.appendChild(script);
+  });
+
+const getFunctionResponseStatus = (error: unknown) => {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "context" in error &&
+    error.context instanceof Response
+  ) {
+    return error.context.status;
+  }
+  return null;
+};
 
 export default function BookConsultation() {
-  const [selectedPractitioner, setSelectedPractitioner] =
-    useState<Practitioner>(practitioners[0]);
-
+  const [searchParams] = useSearchParams();
+  const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
+  const [selectedPractitionerId, setSelectedPractitionerId] = useState("");
   const [consultationType, setConsultationType] = useState("video");
-
-  const [selectedDate, setSelectedDate] = useState(12);
-
-  const [selectedTime, setSelectedTime] = useState("10:00 AM");
+  const availableDates = useMemo(() => getAvailableDates(), []);
+  const [selectedDate, setSelectedDate] = useState(availableDates[0].date);
+  const [selectedTime, setSelectedTime] = useState(timeSlots[0]);
 
   const [patientName, setPatientName] = useState("");
   const [patientPhone, setPatientPhone] = useState("");
   const [reason, setReason] = useState("");
-
   const [bookingComplete, setBookingComplete] = useState(false);
+  const [loadingPractitioners, setLoadingPractitioners] = useState(true);
+  const [booking, setBooking] = useState(false);
+  const [error, setError] = useState("");
+  const [pendingOrder, setPendingOrder] = useState<RazorpayOrder | null>(null);
+  const [verificationAttempt, setVerificationAttempt] =
+    useState<RazorpayPaymentResponse | null>(null);
+
+  const selectedPractitioner = practitioners.find(
+    (practitioner) => practitioner.Uid === selectedPractitionerId,
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    const loadBookingDetails = async () => {
+      setLoadingPractitioners(true);
+      setError("");
+
+      const { data, error: doctorsError } = await supabase
+        .from("doctors")
+        .select("*");
+
+      if (doctorsError) {
+        console.error("Error loading practitioners for booking:", doctorsError);
+        if (active) {
+          setError("Unable to load practitioners. Please try again.");
+          setLoadingPractitioners(false);
+        }
+        return;
+      }
+
+      const availablePractitioners = (data ?? []) as Practitioner[];
+      if (active) {
+        setPractitioners(availablePractitioners);
+        const requestedId = searchParams.get("doctor");
+        const selectedDoctor = availablePractitioners.find(
+          (practitioner) => practitioner.Uid === requestedId,
+        );
+        setSelectedPractitionerId(
+          selectedDoctor?.Uid ?? availablePractitioners[0]?.Uid ?? "",
+        );
+      }
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) {
+        console.error("Error loading signed-in patient:", authError);
+      } else if (user && active) {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("full_name, phone")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error(
+            "Error loading patient profile for booking:",
+            profileError,
+          );
+        } else if (profile) {
+          setPatientName(profile.full_name ?? "");
+          setPatientPhone(profile.phone ?? "");
+        } else {
+          setPatientName(user.user_metadata.full_name ?? "");
+        }
+      }
+
+      if (active) {
+        setLoadingPractitioners(false);
+      }
+    };
+
+    void loadBookingDetails();
+    return () => {
+      active = false;
+    };
+  }, [searchParams]);
 
   const selectedConsultation = useMemo(
     () =>
@@ -129,9 +275,209 @@ export default function BookConsultation() {
     [consultationType],
   );
 
-  const handleBooking = () => {
+  const verifyPayment = async (
+    attempt: RazorpayPaymentResponse,
+    order: RazorpayOrder,
+  ) => {
+    setBooking(true);
+    setError("");
+    const { data, error: verificationError } = await supabase.functions.invoke<{
+      verified: boolean;
+    }>("verify-razorpay-payment", {
+      body: {
+        appointment_id: order.appointment_id,
+        razorpay_order_id: attempt.razorpay_order_id,
+        razorpay_payment_id: attempt.razorpay_payment_id,
+        razorpay_signature: attempt.razorpay_signature,
+      },
+    });
+
+    if (verificationError) {
+      console.error("Payment verification request failed:", verificationError);
+      setError(
+        "Payment was submitted, but we could not confirm it yet. Retry verification below.",
+      );
+      setBooking(false);
+      return;
+    }
+    if (!data?.verified) {
+      setError("Payment is still processing. Retry verification in a moment.");
+      setBooking(false);
+      return;
+    }
+
+    setBooking(false);
+    setVerificationAttempt(null);
     setBookingComplete(true);
   };
+
+  const openCheckout = async (order: RazorpayOrder) => {
+    setError("");
+    setBooking(true);
+
+    try {
+      await loadRazorpayCheckout();
+      if (!window.Razorpay) {
+        throw new Error("Razorpay checkout did not initialize.");
+      }
+
+      const checkout = new window.Razorpay({
+        key: order.key_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: "AyurCare",
+        description: `Consultation with ${order.practitioner_name}`,
+        order_id: order.order_id,
+        prefill: {
+          name: order.patient_name,
+          contact: order.patient_phone,
+          email: order.email,
+        },
+        notes: { appointment_id: order.appointment_id },
+        theme: { color: "#28543A" },
+        handler: (response) => {
+          setVerificationAttempt(response);
+          void verifyPayment(response, order);
+        },
+        modal: {
+          ondismiss: () => setBooking(false),
+        },
+      });
+
+      checkout.on("payment.failed", () => {
+        setError("Payment failed. You can try again using the same reserved slot.");
+        setBooking(false);
+      });
+      checkout.open();
+    } catch (checkoutError) {
+      console.error("Could not open Razorpay checkout:", checkoutError);
+      setError("Unable to open Razorpay checkout. Please try again.");
+      setBooking(false);
+    }
+  };
+
+  const handleBooking = async () => {
+    setError("");
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      if (authError) console.error("Could not verify patient before payment:", authError);
+      setError("Please sign in before booking a consultation.");
+      return;
+    }
+
+    if (!selectedPractitioner) {
+      setError("Choose a practitioner before booking.");
+      return;
+    }
+
+    if (!patientName.trim() || !patientPhone.trim()) {
+      setError("Enter the patient's name and phone number to continue.");
+      return;
+    }
+
+    setBooking(true);
+    const { data, error: orderError } =
+      await supabase.functions.invoke<RazorpayOrder>("create-razorpay-order", {
+        body: {
+          ...(pendingOrder
+            ? { appointment_id: pendingOrder.appointment_id }
+            : {
+                practitioner_id: selectedPractitioner.Uid,
+                appointment_date: selectedDate,
+                appointment_time: toStoredTime(selectedTime),
+                consultation_type: consultationType,
+                patient_name: patientName.trim(),
+                patient_phone: patientPhone.trim(),
+                reason: reason.trim() || null,
+              }),
+        },
+      });
+
+    if (orderError || !data) {
+      console.error("Unable to create Razorpay order:", orderError);
+      const responseStatus = getFunctionResponseStatus(orderError);
+      if (responseStatus === 401) {
+        setError("Please sign in before booking a consultation.");
+      } else if (responseStatus === 409 && pendingOrder) {
+        setPendingOrder(null);
+        setVerificationAttempt(null);
+        setError("This payment reservation expired. Choose an available slot again.");
+      } else if (responseStatus === 409) {
+        setError("That time is no longer available. Please choose another slot.");
+      } else if (orderError?.message.includes("FunctionsFetchError")) {
+        setError("Payment service is unavailable. Please try again later.");
+      } else {
+        setError("Unable to start payment. Please try again.");
+      }
+      setBooking(false);
+      return;
+    }
+
+    if (data.already_paid) {
+      setBooking(false);
+      setBookingComplete(true);
+      return;
+    }
+
+    setPendingOrder(data);
+    setVerificationAttempt(null);
+    await openCheckout(data);
+  };
+
+  if (loadingPractitioners) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm font-medium text-[#6B7C70]">
+          Loading practitioners...
+        </p>
+      </div>
+    );
+  }
+
+  if (error && practitioners.length === 0) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+        <p className="text-sm text-red-700">{error}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="rounded-xl bg-[#28543A] px-5 py-2.5 text-sm font-semibold text-white"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (practitioners.length === 0) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+        <p className="text-lg font-semibold text-[#183322]">
+          No practitioners are available yet.
+        </p>
+        <NavLink
+          to="/find-doctor"
+          className="text-sm font-semibold text-[#28543A]"
+        >
+          Return to practitioner directory
+        </NavLink>
+      </div>
+    );
+  }
+
+  if (!selectedPractitioner) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm text-[#6B7C70]">
+          Select a practitioner to continue.
+        </p>
+      </div>
+    );
+  }
 
   if (bookingComplete) {
     return (
@@ -179,7 +525,7 @@ export default function BookConsultation() {
                     Date
                   </p>
                   <p className="mt-1 text-sm font-semibold text-[#28543A]">
-                    Aug {selectedDate}, 2026
+                    {formatAppointmentDate(selectedDate)}
                   </p>
                 </div>
 
@@ -209,16 +555,12 @@ export default function BookConsultation() {
 
   return (
     <div className="min-h-screen bg-[#F5F8F3] text-[#183322]">
-      {/* =====================================================
-          PAGE HEADER
-      ===================================================== */}
-
       <header className="border-b border-[#DCE9D8]/80 bg-white">
         <div className="mx-auto max-w-[1450px] px-4 py-5 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <NavLink
-                to="/"
+                to="/dashboard"
                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#DCE9D8] bg-[#F5F8F3] text-[#28543A] transition hover:bg-[#EAF1E7]"
               >
                 <ArrowLeft size={18} />
@@ -242,10 +584,6 @@ export default function BookConsultation() {
         </div>
       </header>
 
-      {/* =====================================================
-          MAIN
-      ===================================================== */}
-
       <main className="mx-auto max-w-[1450px] px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
         {/* Page intro */}
 
@@ -268,10 +606,6 @@ export default function BookConsultation() {
         </div>
 
         <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_390px]">
-          {/* =================================================
-              LEFT SIDE
-          ================================================= */}
-
           <div className="space-y-6">
             {/* Practitioner */}
 
@@ -293,13 +627,14 @@ export default function BookConsultation() {
 
               <div className="mt-5 grid gap-3 md:grid-cols-3">
                 {practitioners.map((doctor) => {
-                  const selected = selectedPractitioner.id === doctor.id;
+                  const selected = selectedPractitionerId === doctor.Uid;
 
                   return (
                     <button
-                      key={doctor.id}
+                      key={doctor.Uid}
                       type="button"
-                      onClick={() => setSelectedPractitioner(doctor)}
+                      disabled={Boolean(pendingOrder)}
+                      onClick={() => setSelectedPractitionerId(doctor.Uid)}
                       className={`
                         relative rounded-2xl border p-3 text-left transition-all
                         ${
@@ -368,6 +703,7 @@ export default function BookConsultation() {
                     <button
                       key={type.id}
                       type="button"
+                      disabled={Boolean(pendingOrder)}
                       onClick={() => setConsultationType(type.id)}
                       className={`
                         flex items-start gap-3 rounded-2xl border p-4 text-left transition
@@ -426,13 +762,14 @@ export default function BookConsultation() {
                 </div>
 
                 <div className="grid grid-cols-5 gap-2">
-                  {dates.map((date) => {
+                  {availableDates.map((date) => {
                     const selected = selectedDate === date.date;
 
                     return (
                       <button
                         key={date.date}
                         type="button"
+                        disabled={Boolean(pendingOrder)}
                         onClick={() => setSelectedDate(date.date)}
                         className={`
                           rounded-2xl border px-2 py-3 text-center transition
@@ -448,7 +785,7 @@ export default function BookConsultation() {
                         </span>
 
                         <span className="mt-1 block text-lg font-bold">
-                          {date.date}
+                          {new Date(`${date.date}T12:00:00`).getDate()}
                         </span>
 
                         <span
@@ -456,7 +793,10 @@ export default function BookConsultation() {
                             selected ? "text-white/70" : "text-[#9AA69C]"
                           }`}
                         >
-                          {date.month}
+                          {new Date(`${date.date}T12:00:00`).toLocaleDateString(
+                            "en-IN",
+                            { month: "short" },
+                          )}
                         </span>
                       </button>
                     );
@@ -480,6 +820,7 @@ export default function BookConsultation() {
                       <button
                         key={time}
                         type="button"
+                        disabled={Boolean(pendingOrder)}
                         onClick={() => setSelectedTime(time)}
                         className={`
                           rounded-xl border px-3 py-3 text-xs font-semibold transition
@@ -515,6 +856,8 @@ export default function BookConsultation() {
                   placeholder="Enter patient name"
                   value={patientName}
                   onChange={setPatientName}
+                  required
+                  disabled={Boolean(pendingOrder)}
                 />
 
                 <InputField
@@ -522,6 +865,9 @@ export default function BookConsultation() {
                   placeholder="+91 98765 43210"
                   value={patientPhone}
                   onChange={setPatientPhone}
+                  type="tel"
+                  required
+                  disabled={Boolean(pendingOrder)}
                 />
               </div>
 
@@ -533,6 +879,7 @@ export default function BookConsultation() {
                 <textarea
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
+                  disabled={Boolean(pendingOrder)}
                   placeholder="Briefly describe your health concern..."
                   rows={4}
                   className="
@@ -553,10 +900,6 @@ export default function BookConsultation() {
               </div>
             </section>
           </div>
-
-          {/* =================================================
-              RIGHT SUMMARY
-          ================================================= */}
 
           <aside className="xl:sticky xl:top-6 xl:self-start">
             <div className="overflow-hidden rounded-[30px] border border-[#D7E4D5] bg-white shadow-[0_20px_55px_rgba(40,84,58,0.08)]">
@@ -607,7 +950,7 @@ export default function BookConsultation() {
                   <SummaryRow
                     icon={<CalendarDays size={16} />}
                     label="Date"
-                    value={`August ${selectedDate}, 2026`}
+                    value={formatAppointmentDate(selectedDate)}
                   />
 
                   <SummaryRow
@@ -648,9 +991,53 @@ export default function BookConsultation() {
 
                 {/* CTA */}
 
+                {error && (
+                  <div role="alert" className="mt-4 text-sm text-red-700">
+                    <p>{error}</p>
+                    {error ===
+                      "Please sign in before booking a consultation." && (
+                      <NavLink
+                        to="/"
+                        className="mt-1 inline-block font-semibold underline"
+                      >
+                        Sign in
+                      </NavLink>
+                    )}
+                  </div>
+                )}
+
+                {verificationAttempt && pendingOrder && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void verifyPayment(verificationAttempt, pendingOrder)
+                    }
+                    disabled={booking}
+                    className="mt-4 w-full rounded-xl border border-[#C9D9CB] px-4 py-3 text-sm font-semibold text-[#28543A] disabled:opacity-60"
+                  >
+                    Retry payment verification
+                  </button>
+                )}
+
+                {pendingOrder && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingOrder(null);
+                      setVerificationAttempt(null);
+                      setError("");
+                    }}
+                    disabled={booking}
+                    className="mt-3 w-full rounded-xl px-4 py-2 text-xs font-semibold text-[#547362] underline disabled:opacity-60"
+                  >
+                    Change appointment
+                   </button>
+                )}
+
                 <button
                   type="button"
                   onClick={handleBooking}
+                  disabled={booking}
                   className="
                     mt-6
                     flex w-full
@@ -664,9 +1051,15 @@ export default function BookConsultation() {
                     transition
                     hover:bg-[#1F4730]
                     active:scale-[0.99]
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
                   "
                 >
-                  Confirm & Book
+                  {booking
+                    ? "Processing..."
+                    : pendingOrder
+                      ? "Retry Payment"
+                      : "Pay & Confirm Booking"}
                   <ArrowRight size={17} />
                 </button>
 
@@ -688,104 +1081,5 @@ export default function BookConsultation() {
         </div>
       </main>
     </div>
-  );
-}
-
-/* =========================================================
-   INPUT
-========================================================= */
-
-interface InputFieldProps {
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-}
-
-function InputField({ label, placeholder, value, onChange }: InputFieldProps) {
-  return (
-    <div>
-      <label className="mb-2 block text-xs font-semibold text-[#58705E]">
-        {label}
-      </label>
-
-      <div className="relative">
-        <UserRound
-          size={16}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9BA89F]"
-        />
-
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          className="
-            h-12 w-full
-            rounded-2xl
-            border border-[#E1E9DF]
-            bg-[#FAFCF9]
-            pl-11 pr-4
-            text-sm text-[#183322]
-            outline-none
-            transition
-            placeholder:text-[#A4AEA6]
-            focus:border-[#7FA887]
-            focus:bg-white
-            focus:ring-4
-            focus:ring-[#7FA887]/10
-          "
-        />
-      </div>
-    </div>
-  );
-}
-
-/* =========================================================
-   SUMMARY ROW
-========================================================= */
-
-interface SummaryRowProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}
-
-function SummaryRow({ icon, label, value }: SummaryRowProps) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EFF5ED] text-[#52775A]">
-        {icon}
-      </div>
-
-      <div className="min-w-0">
-        <p className="text-[10px] uppercase tracking-wide text-[#9AA59D]">
-          {label}
-        </p>
-
-        <p className="mt-0.5 truncate text-xs font-semibold text-[#38563F]">
-          {value}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/* =========================================================
-   STAR RATING
-========================================================= */
-
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <span className="flex items-center gap-0.5 text-[#D1A84A]">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <Star
-          key={index}
-          size={11}
-          fill={index < Math.round(rating) ? "currentColor" : "none"}
-          strokeWidth={1.5}
-        />
-      ))}
-    </span>
   );
 }

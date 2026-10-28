@@ -36,10 +36,6 @@ export default function Profile() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  /* =========================================================
-     LOAD PROFILE
-  ========================================================= */
-
   useEffect(() => {
     const loadProfile = async () => {
       setLoading(true);
@@ -83,10 +79,6 @@ export default function Profile() {
 
     loadProfile();
   }, []);
-
-  /* =========================================================
-     SAVE PROFILE
-  ========================================================= */
 
   const handleSaveProfile = async () => {
     if (!profile) return;
@@ -132,10 +124,6 @@ export default function Profile() {
     setSaving(false);
   };
 
-  /* =========================================================
-     SIGN OUT
-  ========================================================= */
-
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -147,10 +135,6 @@ export default function Profile() {
 
     window.location.href = "/";
   };
-
-  /* =========================================================
-     LOADING
-  ========================================================= */
 
   if (loading) {
     return (
@@ -165,10 +149,6 @@ export default function Profile() {
       </div>
     );
   }
-
-  /* =========================================================
-     ERROR
-  ========================================================= */
 
   if (error && !profile) {
     return (
@@ -198,10 +178,6 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-[#F6F8F4] text-[#203B2A]">
-      {/* =====================================================
-          PAGE HEADER
-      ===================================================== */}
-
       <header className="border-b border-[#28543A]/10 bg-white">
         <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6D8A73] sm:text-xs">
@@ -219,19 +195,9 @@ export default function Profile() {
         </div>
       </header>
 
-      {/* =====================================================
-          MAIN CONTENT
-      ===================================================== */}
-
       <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
         <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)] lg:gap-6">
-          {/* =================================================
-              PROFILE CARD
-          ================================================= */}
-
           <section className="h-fit overflow-hidden rounded-2xl border border-[#28543A]/10 bg-white shadow-[0_10px_35px_rgba(40,84,58,0.06)] sm:rounded-3xl">
-            {/* Cover */}
-
             <div className="relative h-24 bg-gradient-to-br from-[#28543A] via-[#3D6B4B] to-[#789878] sm:h-28">
               <div className="absolute -bottom-11 left-1/2 -translate-x-1/2 sm:-bottom-12">
                 <div className="relative">
@@ -265,14 +231,10 @@ export default function Profile() {
                 AyurCare Member
               </p>
 
-              {/* Verified */}
-
               <div className="mx-auto mt-4 flex w-fit items-center justify-center gap-2 rounded-xl bg-[#F3F7F1] px-3 py-2 text-[10px] font-medium text-[#52705A] sm:mt-5 sm:text-xs">
                 <ShieldCheck size={14} />
                 Verified Account
               </div>
-
-              {/* Stats */}
 
               <div className="mt-5 grid grid-cols-2 divide-x divide-[#28543A]/10 border-y border-[#28543A]/10 py-3.5 sm:mt-6 sm:py-4">
                 <div>
@@ -291,8 +253,6 @@ export default function Profile() {
                   </p>
                 </div>
               </div>
-
-              {/* Edit Profile */}
 
               {!editing ? (
                 <button
@@ -323,16 +283,7 @@ export default function Profile() {
               )}
             </div>
           </section>
-
-          {/* =================================================
-              RIGHT CONTENT
-          ================================================= */}
-
           <div className="min-w-0 space-y-5 sm:space-y-6">
-            {/* =================================================
-                PERSONAL INFORMATION
-            ================================================= */}
-
             <ProfileSection
               title="Personal Information"
               description="Your basic personal details"
@@ -341,8 +292,6 @@ export default function Profile() {
               {editing ? (
                 <>
                   <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-                    {/* Full Name */}
-
                     <EditField
                       label="Full Name"
                       value={profile?.full_name || ""}
@@ -357,8 +306,6 @@ export default function Profile() {
                         )
                       }
                     />
-
-                    {/* Date of Birth */}
 
                     <EditField
                       label="Date of Birth"
@@ -375,8 +322,6 @@ export default function Profile() {
                         )
                       }
                     />
-
-                    {/* Email */}
 
                     <div className="min-w-0 rounded-2xl border border-[#28543A]/10 bg-[#F3F7F1] p-3.5 sm:p-4">
                       <div className="flex items-center gap-2 text-[#829187]">
@@ -395,9 +340,6 @@ export default function Profile() {
                         Email is managed by your login account.
                       </p>
                     </div>
-
-                    {/* Phone */}
-
                     <EditField
                       label="Phone Number"
                       value={profile?.phone || ""}
@@ -413,8 +355,6 @@ export default function Profile() {
                       }
                     />
 
-                    {/* Location */}
-
                     <EditField
                       label="Location"
                       value={profile?.location || ""}
@@ -429,8 +369,6 @@ export default function Profile() {
                         )
                       }
                     />
-
-                    {/* Gender */}
 
                     <div className="min-w-0 rounded-2xl border border-[#28543A]/10 bg-[#FAFCF9] p-3.5 sm:p-4">
                       <label className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#829187] sm:text-[10px]">

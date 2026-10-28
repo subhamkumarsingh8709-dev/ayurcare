@@ -1,18 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import {
   Search,
+  X,
   SlidersHorizontal,
-  MapPin,
-  Star,
-  CalendarCheck,
-  Video,
   ChevronDown,
-  Heart,
-  Clock3,
   Award,
   Stethoscope,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { PractitionerCard } from "../components/FindDoctor/PractitionerCard";
+import type { Doctor } from "../components/FindDoctor/PractitionerCard";
 
 const specialties = [
   "All Specialties",
@@ -23,26 +21,9 @@ const specialties = [
   "Stress & Mind Wellness",
   "Skin & Hair Wellness",
 ];
-type Doctor = {
-  number: number;
-  name: string;
-  specialty: string;
-  experience: string;
-  rating: number;
-  reviews: number;
-  fee: number;
-  location: string;
-  languages: string[] | string;
-  image: string;
-  available: string;
-  online: boolean;
-  verified: boolean;
-  phone_number?: string;
-  Uid: string;
-};
-
 export default function FindDoctor() {
   const [search, setSearch] = useState("");
+  const [submittedSearch, setSubmittedSearch] = useState("");
   const [specialty, setSpecialty] = useState("All Specialties");
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [sortBy, setSortBy] = useState("Recommended");
@@ -50,39 +31,65 @@ export default function FindDoctor() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
+  const resultsRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    let isActive = true;
+
     const fetchDoctors = async () => {
       setLoading(true);
       setError("");
 
-      const { data, error } = await supabase.from("doctors").select("*");
+      try {
+        const { data, error: fetchError } = await supabase
+          .from("doctors")
+          .select("*");
 
-      console.log("Fetched doctors:", data); // Log the fetched data for debugging
+        if (fetchError) {
+          throw fetchError;
+        }
 
-      if (error) {
-        console.error("Error fetching doctors:", error);
-        setError("Unable to load doctors. Please try again.");
-        setLoading(false);
-        return;
+        if (isActive) {
+          setDoctors(data ?? []);
+        }
+      } catch (fetchError) {
+        console.error("Error fetching doctors:", fetchError);
+
+        if (isActive) {
+          setError("Unable to load doctors. Please try again.");
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
       }
-
-      setDoctors(data || []);
-      setLoading(false);
     };
 
     fetchDoctors();
-  }, []);
+
+    return () => {
+      isActive = false;
+    };
+  }, [retryCount]);
 
   const filteredDoctors = useMemo(() => {
+    const searchValue = submittedSearch.toLocaleLowerCase().trim();
     let result = doctors.filter((doctor) => {
-      const searchValue = search.toLowerCase().trim();
+      const searchableFields = [
+        doctor.name,
+        doctor.specialty,
+        doctor.location,
+        ...(Array.isArray(doctor.languages)
+          ? doctor.languages
+          : [doctor.languages]),
+      ];
 
       const matchesSearch =
         !searchValue ||
-        doctor.name.toLowerCase().includes(searchValue) ||
-        doctor.specialty.toLowerCase().includes(searchValue) ||
-        doctor.location.toLowerCase().includes(searchValue);
+        searchableFields.some((field) =>
+          String(field ?? "").toLocaleLowerCase().includes(searchValue),
+        );
 
       const matchesSpecialty =
         specialty === "All Specialties" ||
@@ -110,7 +117,20 @@ export default function FindDoctor() {
     }
 
     return result;
-  }, [doctors, search, specialty, onlineOnly, sortBy]);
+  }, [doctors, submittedSearch, specialty, onlineOnly, sortBy]);
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmittedSearch(search.trim());
+    requestAnimationFrame(() =>
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  };
+
+  const clearSearch = () => {
+    setSearch("");
+    setSubmittedSearch("");
+  };
 
   // Loading
   if (loading) {
@@ -141,7 +161,7 @@ export default function FindDoctor() {
           <p className="mt-2 text-sm text-[#6B7C70]">{error}</p>
 
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => setRetryCount((count) => count + 1)}
             className="
               mt-5
               rounded-xl
@@ -211,14 +231,21 @@ export default function FindDoctor() {
 
             {/* Search */}
 
-            <div className="mt-7 flex max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-xl sm:flex-row">
+            <form
+              role="search"
+              onSubmit={handleSearch}
+              className="mt-7 flex max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-xl sm:flex-row"
+            >
               <div className="flex flex-1 items-center gap-3 px-3">
                 <Search size={20} className="shrink-0 text-[#6B806F]" />
 
                 <input
+                  type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search practitioner, specialty or city..."
+                  aria-label="Search practitioners by name, specialty, city, or language"
+                  aria-controls="practitioner-results"
                   className="
                     w-full
                     bg-transparent
@@ -229,10 +256,21 @@ export default function FindDoctor() {
                     placeholder:text-[#91A095]
                   "
                 />
+
+                {search && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    aria-label="Clear practitioner search"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#718578] transition hover:bg-[#F1F6F2] hover:text-[#28543A]"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
 
               <button
-                type="button"
+                type="submit"
                 className="
                   rounded-xl
                   bg-[#28543A]
@@ -247,7 +285,7 @@ export default function FindDoctor() {
               >
                 Search
               </button>
-            </div>
+            </form>
           </div>
         </section>
 
@@ -389,7 +427,13 @@ export default function FindDoctor() {
             RESULTS HEADER
         ===================================================== */}
 
-        <div className="mt-8 flex items-end justify-between">
+        <section
+          id="practitioner-results"
+          ref={resultsRef}
+          aria-live="polite"
+          className="mt-8 scroll-mt-24"
+        >
+        <div className="flex items-end justify-between">
           <div>
             <p className="text-xs font-medium text-[#8A978E]">
               Practitioner directory
@@ -398,6 +442,11 @@ export default function FindDoctor() {
             <h2 className="mt-1 text-xl font-bold text-[#26382B]">
               {filteredDoctors.length} practitioners found
             </h2>
+            {submittedSearch && (
+              <p className="mt-1 text-xs text-[#718578]">
+                Results for “{submittedSearch}”
+              </p>
+            )}
           </div>
         </div>
 
@@ -428,7 +477,7 @@ export default function FindDoctor() {
             <button
               type="button"
               onClick={() => {
-                setSearch("");
+                clearSearch();
                 setSpecialty("All Specialties");
                 setOnlineOnly(false);
               }}
@@ -438,6 +487,7 @@ export default function FindDoctor() {
             </button>
           </div>
         )}
+        </section>
 
         {/* =====================================================
             TRUST BANNER
@@ -475,205 +525,5 @@ export default function FindDoctor() {
         </section>
       </div>
     </main>
-  );
-}
-
-/* =========================================================
-   PRACTITIONER CARD
-========================================================= */
-
-function PractitionerCard({ doctor }: { doctor: Doctor }) {
-  return (
-    <article className="group overflow-hidden rounded-[24px] border border-[#E1E8E1] bg-white shadow-[0_8px_35px_rgba(40,84,58,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(40,84,58,0.11)]">
-      {/* Image */}
-
-      <div className="relative h-52 overflow-hidden bg-[#E9EFE9]">
-        <img
-          src={doctor.image}
-          alt={doctor.name}
-          className="
-            h-full
-            w-full
-            object-cover
-            object-top
-            transition
-            duration-500
-            group-hover:scale-105
-          "
-        />
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
-
-        {/* Verified */}
-
-        {doctor.verified && (
-          <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-[#28543A] shadow-lg backdrop-blur">
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#DDEBDD]">
-              ✓
-            </span>
-            Verified
-          </div>
-        )}
-
-        {/* Favorite */}
-
-        <button
-          type="button"
-          aria-label={`Save ${doctor.name}`}
-          className="
-            absolute
-            right-4
-            top-4
-            flex
-            h-9
-            w-9
-            items-center
-            justify-center
-            rounded-full
-            bg-white/90
-            text-[#52645A]
-            shadow-lg
-            backdrop-blur
-            transition
-            hover:bg-white
-            hover:text-[#B15D68]
-          "
-        >
-          <Heart size={16} />
-        </button>
-
-        {/* Online */}
-
-        {doctor.online && (
-          <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-[#28543A]/90 px-3 py-1.5 text-[10px] font-semibold text-white backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#A9D7A9]" />
-            Available online
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-[17px] font-bold text-[#28392D]">
-              {doctor.name}
-            </h3>
-
-            <p className="mt-1 text-xs font-medium text-[#64806C]">
-              {doctor.specialty}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1 rounded-lg bg-[#FFF8E7] px-2 py-1.5">
-            <Star size={13} className="fill-[#D6A943] text-[#D6A943]" />
-
-            <span className="text-xs font-bold text-[#765D22]">
-              {doctor.rating}
-            </span>
-          </div>
-        </div>
-
-        {/* Details */}
-
-        <div className="mt-4 space-y-2.5 border-t border-[#EDF1EC] pt-4">
-          <div className="flex items-center gap-2 text-xs text-[#77857B]">
-            <Award size={15} className="text-[#6D8D73]" />
-
-            <span>{doctor.experience} experience</span>
-
-            <span className="text-[#C0C9C2]">•</span>
-
-            <span>{doctor.reviews} reviews</span>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-[#77857B]">
-            <MapPin size={15} className="text-[#6D8D73]" />
-
-            <span>{doctor.location}</span>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-[#77857B]">
-            <Video size={15} className="text-[#6D8D73]" />
-
-            <span>
-              {Array.isArray(doctor.languages)
-                ? doctor.languages.join(" • ")
-                : doctor.languages}
-            </span>
-          </div>
-        </div>
-
-        {/* Availability */}
-
-        <div className="mt-4 flex items-center justify-between rounded-xl bg-[#F5F8F4] px-3 py-2.5">
-          <div className="flex items-center gap-2">
-            <Clock3 size={14} className="text-[#62816A]" />
-
-            <div>
-              <p className="text-[9px] font-medium uppercase tracking-wide text-[#98A49B]">
-                Next available
-              </p>
-
-              <p className="mt-0.5 text-xs font-semibold text-[#425549]">
-                {doctor.available}
-              </p>
-            </div>
-          </div>
-
-          <p className="text-sm font-bold text-[#28543A]">
-            ₹{doctor.fee}
-            <span className="text-[10px] font-medium text-[#8A968D]">
-              {" "}
-              / session
-            </span>
-          </p>
-        </div>
-
-        {/* Actions */}
-
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            className="
-              rounded-xl
-              border
-              border-[#C9D9CB]
-              bg-white
-              py-2.5
-              text-xs
-              font-semibold
-              text-[#38523F]
-              transition
-              hover:bg-[#F3F7F2]
-            "
-          >
-            View Profile
-          </button>
-
-          <button
-            type="button"
-            className="
-              flex
-              items-center
-              justify-center
-              gap-1.5
-              rounded-xl
-              bg-[#28543A]
-              py-2.5
-              text-xs
-              font-semibold
-              text-white
-              transition
-              hover:bg-[#214731]
-            "
-          >
-            <CalendarCheck size={14} />
-            Book
-          </button>
-        </div>
-      </div>
-    </article>
   );
 }

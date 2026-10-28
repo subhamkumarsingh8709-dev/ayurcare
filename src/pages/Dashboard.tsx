@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { Link } from "react-router-dom";
+import { FileIcon } from "../components/Dashboard/FileIcon";
 
 interface Feature {
   title: string;
@@ -101,10 +102,6 @@ const doshas = [
     characteristics: ["Stability", "Strength", "Grounding"],
   },
 ];
-
-/* ============================================================
-   WELLNESS PRINCIPLES
-============================================================ */
 
 const wellnessCards: WellnessCard[] = [
   {
@@ -1088,12 +1085,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-}
-
-/* ============================================================
-   SMALL ICON COMPONENT
-============================================================ */
-
-function FileIcon() {
-  return <ShieldCheck size={20} />;
 }

@@ -79,8 +79,7 @@ export default function Register() {
         ====================================================== */}
 
         <section
-          className=" relative hidden overflow-hidden bg-gradient-to-br from-[#355F43]
-            via-[#2F573D]
+          className=" relative hidden overflow-hidden bg-gradient-to-br from-[#355F43] via-[#2F573D]
             to-[#1F4530]
             lg:flex
             lg:flex-col
@@ -90,8 +89,7 @@ export default function Register() {
           "
         >
           <div
-            className="
-              pointer-events-none
+            className=" pointer-events-none
               absolute
               -right-24
               -top-24
